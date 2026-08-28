@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leasing- & Finanzierungsrechner</title>
+  <meta name="theme-color" content="#0b63f6" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon-192.png" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --text: #1f2328;
+      --muted: #6d747c;
+      --border: #c9cdd2;
+      --primary: #0b63f6;
+      --primary-hover: #084fc5;
+      --danger: #b42318;
+      --shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 28px 16px 48px;
+    }
+
+    .header { margin-bottom: 18px; }
+    .header h1 { margin: 0 0 6px; font-size: clamp(1.7rem, 4vw, 2.25rem); }
+    .header p { margin: 0; color: var(--muted); line-height: 1.5; }
+
+    .calculator {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      border: 1px solid #e8ebee;
+    }
+
+    .section { padding: 24px; border-bottom: 1px solid #eceef0; }
+    .section:last-child { border-bottom: 0; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+    }
+
+    .field.full { grid-column: 1 / -1; }
+
+    label { display: block; font-size: 1rem; font-weight: 650; margin-bottom: 8px; }
+    .hint { display: block; margin-top: 6px; font-size: 0.82rem; color: var(--muted); }
+
+    input, select {
+      width: 100%; min-height: 54px; border: 2px solid var(--border); border-radius: 0;
+      padding: 0 16px; font-size: 1.05rem; background: #fff; color: var(--text);
+      outline: none; transition: border-color .15s ease, box-shadow .15s ease;
+    }
+
+    input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(11, 99, 246, 0.12); }
+
+    .input-with-side {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 120px;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .side-value {
+      min-height: 54px;
+      border: 2px solid #e4e7ea;
+      background: #f8f9fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 10px;
+      font-weight: 700;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .mode-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .mode-btn {
+      min-height: 50px; border: 2px solid var(--border); background: #fff; font: inherit;
+      font-weight: 700; cursor: pointer; color: var(--text);
+    }
+    .mode-btn.active { border-color: var(--primary); background: rgba(11, 99, 246, 0.07); color: var(--primary); }
+
+    .lease-only { display: none; }
+    .leasing .lease-only { display: block; }
+
+    .action { padding: 24px; }
+    .action-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+
+    .calculate-btn, .compare-btn {
+      min-height: 58px; border: 0; font-size: 1.05rem; font-weight: 750; cursor: pointer;
+      transition: background .15s ease, transform .05s ease;
+    }
+    .calculate-btn { background: var(--primary); color: white; }
+    .calculate-btn:hover { background: var(--primary-hover); }
+    .compare-btn { background: #fff; color: var(--primary); border: 2px solid var(--primary); }
+    .compare-btn:disabled { color: var(--muted); border-color: var(--border); cursor: not-allowed; background: #f6f7f8; }
+    .calculate-btn:active, .compare-btn:active { transform: translateY(1px); }
+
+    .result { background: #fbfcfd; padding: 28px 24px 30px; border-top: 1px solid #eceef0; }
+    .result-label { color: var(--muted); font-size: 1.05rem; margin-bottom: 6px; }
+    .monthly { font-size: clamp(2rem, 7vw, 3rem); font-weight: 850; letter-spacing: -0.03em; margin: 0 0 18px; }
+
+    .summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
+    .summary-card { background: #fff; border: 1px solid #e4e7ea; padding: 14px; min-height: 88px; }
+    .summary-card span { display: block; color: var(--muted); font-size: 0.78rem; margin-bottom: 5px; }
+    .summary-card strong { font-size: 1rem; line-height: 1.25; }
+
+    .comparison-section { padding: 24px; border-top: 1px solid #eceef0; }
+    .comparison-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .comparison-head h2 { margin: 0; font-size: 1.15rem; }
+    .comparison-count { color: var(--muted); font-size: 0.9rem; }
+    .comparison-empty { color: var(--muted); margin: 0; line-height: 1.45; }
+    .comparison-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+
+    .comparison-card { border: 1px solid #dfe3e7; background: #fff; padding: 16px; min-width: 0; }
+    .comparison-card h3 { margin: 0 0 4px; font-size: 1rem; }
+    .comparison-card .compare-rate { font-size: 1.55rem; font-weight: 850; margin: 6px 0 12px; }
+    .compare-details { display: grid; gap: 6px; font-size: 0.88rem; }
+    .compare-line { display: flex; justify-content: space-between; gap: 10px; }
+    .compare-line span:first-child { color: var(--muted); }
+    .compare-line strong { text-align: right; }
+    .compare-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+    .small-btn { min-height: 42px; border: 1px solid var(--border); background: #fff; font: inherit; font-weight: 650; cursor: pointer; }
+    .small-btn.delete { color: var(--danger); }
+
+    .notice {
+      margin-top: 18px; padding: 12px 14px; background: #fff8e7; border: 1px solid #f1d48a;
+      color: #684b00; font-size: 0.86rem; line-height: 1.45;
+    }
+
+    .error { color: var(--danger); font-size: 0.9rem; margin-top: 12px; min-height: 1.2em; }
+    .hidden { display: none !important; }
+
+    @media (max-width: 760px) {
+      .comparison-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 620px) {
+      .page { padding: 0; }
+      .header { padding: 24px 20px 14px; margin: 0; }
+      .calculator { border-radius: 0; box-shadow: none; border-left: 0; border-right: 0; }
+      .section, .action, .result, .comparison-section { padding-left: 20px; padding-right: 20px; }
+      .grid, .summary, .action-row { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+      .input-with-side { grid-template-columns: minmax(0, 1fr) 105px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <h1>Leasing- & Finanzierungsrechner</h1>
+      <p>Berechne eine ungefähre Monatsrate und vergleiche bis zu drei Varianten.</p>
+    </header>
+
+    <section class="calculator" id="calculator">
+      <div class="section">
+        <div class="field full">
+          <label>Finanzierungsart</label>
+          <div class="mode-tabs" aria-label="Finanzierungsart auswählen">
+            <button class="mode-btn active" type="button" data-mode="finance">Finanzierung</button>
+            <button class="mode-btn" type="button" data-mode="leasing">Leasing</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="grid">
+          <div class="field">
+            <label for="price">Fahrzeugpreis</label>
+            <input id="price" type="number" min="0" step="100" placeholder="CHF" inputmode="decimal" />
+          </div>
+
+          <div class="field">
+            <label for="downPayment">Anzahlung</label>
+            <input id="downPayment" type="number" min="0" step="100" placeholder="CHF" inputmode="decimal" />
+          </div>
+
+          <div class="field lease-only">
+            <label for="mileage">Laufleistung pro Jahr</label>
+            <select id="mileage">
+              <option value="" selected>Laufleistung wählen</option>
+              <option value="5000">5'000 km</option>
+              <option value="10000">10'000 km</option>
+              <option value="15000">15'000 km</option>
+              <option value="20000">20'000 km</option>
+              <option value="25000">25'000 km</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="term">Laufzeit</label>
+            <select id="term">
+              <option value="" selected>Laufzeit wählen</option>
+              <option value="12">12 Monate</option>
+              <option value="24">24 Monate</option>
+              <option value="36">36 Monate</option>
+              <option value="48">48 Monate</option>
+              <option value="60">60 Monate</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="interest">Effektiver Jahreszins</label>
+            <input id="interest" type="number" min="0" max="40" step="0.01" placeholder="%" inputmode="decimal" />
+            <span class="hint">In Prozent, z. B. 9.99</span>
+          </div>
+
+          <div class="field lease-only">
+            <label for="residual">Restwert am Vertragsende</label>
+            <div class="input-with-side">
+              <input id="residual" type="number" min="0" step="100" placeholder="CHF" inputmode="decimal" />
+              <div class="side-value" id="residualPct">– %</div>
+            </div>
+            <span class="hint">Restwert in CHF; der Prozentanteil am Fahrzeugpreis wird automatisch angezeigt.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="action">
+        <div class="action-row">
+          <button class="calculate-btn" id="calculate" type="button">Rate berechnen</button>
+          <button class="compare-btn" id="addComparison" type="button">Zum Vergleich hinzufügen</button>
+        </div>
+        <div class="error" id="error" aria-live="polite"></div>
+      </div>
+
+      <div class="result" aria-live="polite">
+        <div class="result-label" id="resultLabel">Monatsrate Finanzierung</div>
+        <div class="monthly" id="monthly">CHF 0.–</div>
+
+        <div class="summary">
+          <div class="summary-card">
+            <span>Finanzierter Betrag</span>
+            <strong id="amountFinanced">CHF 0.–</strong>
+          </div>
+          <div class="summary-card">
+            <span id="totalLabel">Raten gesamt</span>
+            <strong id="totalPaid">CHF 0.–</strong>
+          </div>
+          <div class="summary-card">
+            <span id="costLabel">Zinskosten</span>
+            <strong id="interestCost">CHF 0.–</strong>
+          </div>
+        </div>
+
+        <div class="notice">
+          Unverbindliche Beispielrechnung. Gebühren, Versicherungen, Rundungsregeln, Restwertvorgaben und die exakte Berechnungsmethode eines Leasing- oder Finanzierungspartners können die effektive Rate verändern.
+        </div>
+      </div>
+
+      <div class="comparison-section">
+        <div class="comparison-head">
+          <h2>Vergleich</h2>
+          <span class="comparison-count" id="comparisonCount">0 / 3</span>
+        </div>
+        <p class="comparison-empty" id="comparisonEmpty">Berechne eine Variante und füge sie zum Vergleich hinzu.</p>
+        <div class="comparison-grid" id="comparisonGrid"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const calculator = document.getElementById('calculator');
+    const modeButtons = [...document.querySelectorAll('.mode-btn')];
+    const priceInput = document.getElementById('price');
+    const downPaymentInput = document.getElementById('downPayment');
+    const termInput = document.getElementById('term');
+    const interestInput = document.getElementById('interest');
+    const residualInput = document.getElementById('residual');
+    const residualPctEl = document.getElementById('residualPct');
+    const mileageInput = document.getElementById('mileage');
+    const monthlyEl = document.getElementById('monthly');
+    const amountFinancedEl = document.getElementById('amountFinanced');
+    const totalPaidEl = document.getElementById('totalPaid');
+    const interestCostEl = document.getElementById('interestCost');
+    const resultLabelEl = document.getElementById('resultLabel');
+    const totalLabelEl = document.getElementById('totalLabel');
+    const costLabelEl = document.getElementById('costLabel');
+    const errorEl = document.getElementById('error');
+    const addComparisonBtn = document.getElementById('addComparison');
+    const comparisonGrid = document.getElementById('comparisonGrid');
+    const comparisonEmpty = document.getElementById('comparisonEmpty');
+    const comparisonCount = document.getElementById('comparisonCount');
+
+    let mode = 'finance';
+    let comparisons = [];
+    let lastResult = null;
+
+    function chf(value) {
+      const rounded = Math.round(value);
+      return `CHF ${new Intl.NumberFormat('de-CH').format(rounded)}.–`;
+    }
+
+    function pct(value) {
+      return `${new Intl.NumberFormat('de-CH', { maximumFractionDigits: 1 }).format(value)} %`;
+    }
+
+    function updateResidualPercentage() {
+      const price = Number(priceInput.value);
+      const residual = Number(residualInput.value);
+      if (Number.isFinite(price) && price > 0 && Number.isFinite(residual) && residual >= 0 && residualInput.value !== '') {
+        residualPctEl.textContent = pct((residual / price) * 100);
+      } else {
+        residualPctEl.textContent = '– %';
+      }
+    }
+
+    function validate(price, downPayment, months, annualRate) {
+      if (!Number.isFinite(price) || price <= 0 || priceInput.value === '') return 'Bitte einen gültigen Fahrzeugpreis eingeben.';
+      if (!Number.isFinite(downPayment) || downPayment < 0 || downPaymentInput.value === '') return 'Bitte eine gültige Anzahlung eingeben.';
+      if (downPayment >= price) return 'Die Anzahlung muss kleiner als der Fahrzeugpreis sein.';
+      if (!Number.isFinite(months) || months <= 0 || termInput.value === '') return 'Bitte eine Laufzeit wählen.';
+      if (!Number.isFinite(annualRate) || annualRate < 0 || interestInput.value === '') return 'Bitte einen gültigen Zinssatz eingeben.';
+      return '';
+    }
+
+    function financePayment(principal, monthlyRate, months) {
+      if (monthlyRate === 0) return principal / months;
+      return principal * monthlyRate / (1 - Math.pow(1 + monthlyRate, -months));
+    }
+
+    function calculate(showErrors = true) {
+      updateResidualPercentage();
+
+      const price = Number(priceInput.value);
+      const downPayment = Number(downPaymentInput.value);
+      const months = Number(termInput.value);
+      const annualRate = Number(interestInput.value) / 100;
+      const monthlyRate = annualRate / 12;
+      const financed = price - downPayment;
+
+      const error = validate(price, downPayment, months, annualRate);
+      if (error) {
+        if (showErrors) errorEl.textContent = error;
+        lastResult = null;
+        return null;
+      }
+      errorEl.textContent = '';
+
+      let result;
+
+      if (mode === 'finance') {
+        const monthly = financePayment(financed, monthlyRate, months);
+        const totalInstallments = monthly * months;
+        const interestCost = totalInstallments - financed;
+
+        resultLabelEl.textContent = 'Monatsrate Finanzierung';
+        monthlyEl.textContent = chf(monthly);
+        amountFinancedEl.textContent = chf(financed);
+        totalLabelEl.textContent = 'Raten gesamt';
+        totalPaidEl.textContent = chf(totalInstallments);
+        costLabelEl.textContent = 'Zinskosten';
+        interestCostEl.textContent = chf(Math.max(0, interestCost));
+
+        result = {
+          mode, price, downPayment, months, annualRate, financed, monthly,
+          totalLabel: 'Raten gesamt', totalValue: totalInstallments,
+          costLabel: 'Zinskosten', costValue: Math.max(0, interestCost),
+          residualValue: null, mileage: null
+        };
+      } else {
+        const residualValue = Number(residualInput.value);
+        const mileage = Number(mileageInput.value);
+
+        if (residualInput.value === '' || !Number.isFinite(residualValue) || residualValue < 0 || residualValue >= price) {
+          if (showErrors) errorEl.textContent = 'Bitte einen Restwert in CHF eingeben, der kleiner als der Fahrzeugpreis ist.';
+          lastResult = null;
+          return null;
+        }
+        if (mileageInput.value === '' || !Number.isFinite(mileage) || mileage <= 0) {
+          if (showErrors) errorEl.textContent = 'Bitte eine Laufleistung wählen.';
+          lastResult = null;
+          return null;
+        }
+
+        let monthly;
+        if (monthlyRate === 0) {
+          monthly = (financed - residualValue) / months;
+        } else {
+          monthly = (financed - residualValue / Math.pow(1 + monthlyRate, months)) *
+                    monthlyRate / (1 - Math.pow(1 + monthlyRate, -months));
+        }
+
+        if (!Number.isFinite(monthly) || monthly < 0) {
+          if (showErrors) errorEl.textContent = 'Mit diesen Werten ergibt sich keine sinnvolle positive Leasingrate. Bitte Restwert oder Anzahlung prüfen.';
+          lastResult = null;
+          return null;
+        }
+
+        const installments = monthly * months;
+        const totalContractValue = downPayment + installments + residualValue;
+        const financingCost = totalContractValue - price;
+
+        resultLabelEl.textContent = `Monatsrate Leasing · ${mileage.toLocaleString('de-CH')} km/Jahr`;
+        monthlyEl.textContent = chf(monthly);
+        amountFinancedEl.textContent = chf(financed);
+        totalLabelEl.textContent = 'Restwert';
+        totalPaidEl.textContent = `${chf(residualValue)} (${pct((residualValue / price) * 100)})`;
+        costLabelEl.textContent = 'Rechnerische Mehrkosten';
+        interestCostEl.textContent = chf(Math.max(0, financingCost));
+
+        result = {
+          mode, price, downPayment, months, annualRate, financed, monthly,
+          totalLabel: 'Restwert', totalValue: residualValue,
+          costLabel: 'Mehrkosten', costValue: Math.max(0, financingCost),
+          residualValue, mileage
+        };
+      }
+
+      lastResult = result;
+      return result;
+    }
+
+    function setMode(newMode, doCalculate = true) {
+      mode = newMode;
+      modeButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode));
+      calculator.classList.toggle('leasing', mode === 'leasing');
+      if (doCalculate) calculate(false);
+    }
+
+    function renderComparisons() {
+      comparisonGrid.innerHTML = '';
+      comparisonCount.textContent = `${comparisons.length} / 3`;
+      comparisonEmpty.classList.toggle('hidden', comparisons.length > 0);
+      addComparisonBtn.disabled = comparisons.length >= 3;
+
+      comparisons.forEach((item, index) => {
+        const card = document.createElement('article');
+        card.className = 'comparison-card';
+
+        const modeText = item.mode === 'finance' ? 'Finanzierung' : 'Leasing';
+        const extraLease = item.mode === 'leasing'
+          ? `<div class="compare-line"><span>Restwert</span><strong>${chf(item.residualValue)} (${pct((item.residualValue / item.price) * 100)})</strong></div>\n             <div class="compare-line"><span>km/Jahr</span><strong>${item.mileage.toLocaleString('de-CH')}</strong></div>`
+          : '';
+
+        card.innerHTML = `
+          <h3>Beispiel ${index + 1} · ${modeText}</h3>
+          <div class="compare-rate">${chf(item.monthly)} / Mt.</div>
+          <div class="compare-details">
+            <div class="compare-line"><span>Fahrzeugpreis</span><strong>${chf(item.price)}</strong></div>
+            <div class="compare-line"><span>Anzahlung</span><strong>${chf(item.downPayment)}</strong></div>
+            <div class="compare-line"><span>Laufzeit</span><strong>${item.months} Monate</strong></div>
+            <div class="compare-line"><span>Jahreszins</span><strong>${pct(item.annualRate * 100)}</strong></div>
+            ${extraLease}
+            <div class="compare-line"><span>${item.costLabel}</span><strong>${chf(item.costValue)}</strong></div>
+          </div>
+          <div class="compare-actions">
+            <button class="small-btn load" type="button" data-index="${index}">Laden</button>
+            <button class="small-btn delete" type="button" data-index="${index}">Entfernen</button>
+          </div>
+        `;
+
+        comparisonGrid.appendChild(card);
+      });
+
+      comparisonGrid.querySelectorAll('.load').forEach(button => {
+        button.addEventListener('click', () => loadComparison(Number(button.dataset.index)));
+      });
+      comparisonGrid.querySelectorAll('.delete').forEach(button => {
+        button.addEventListener('click', () => {
+          comparisons.splice(Number(button.dataset.index), 1);
+          renderComparisons();
+        });
+      });
+    }
+
+    function addComparison() {
+      if (comparisons.length >= 3) return;
+      const result = calculate(true);
+      if (!result) return;
+      comparisons.push({ ...result });
+      renderComparisons();
+    }
+
+    function loadComparison(index) {
+      const item = comparisons[index];
+      if (!item) return;
+      setMode(item.mode, false);
+      priceInput.value = item.price;
+      downPaymentInput.value = item.downPayment;
+      termInput.value = String(item.months);
+      interestInput.value = String(item.annualRate * 100);
+      if (item.mode === 'leasing') {
+        residualInput.value = item.residualValue;
+        mileageInput.value = String(item.mileage);
+      }
+      updateResidualPercentage();
+      calculate(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    modeButtons.forEach(button => {
+      button.addEventListener('click', () => setMode(button.dataset.mode));
+    });
+
+    document.getElementById('calculate').addEventListener('click', () => calculate(true));
+    addComparisonBtn.addEventListener('click', addComparison);
+
+    [priceInput, downPaymentInput, termInput, interestInput, residualInput, mileageInput]
+      .forEach(el => el.addEventListener('change', () => calculate(false)));
+
+    priceInput.addEventListener('input', updateResidualPercentage);
+    residualInput.addEventListener('input', updateResidualPercentage);
+
+    updateResidualPercentage();
+    renderComparisons();
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js');
+      });
+    }
+  </script>
+</body>
+</html>
