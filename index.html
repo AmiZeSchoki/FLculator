@@ -313,7 +313,7 @@
     }
 
     function pct(value) {
-      return `${new Intl.NumberFormat('de-CH',{minimumFractionDigits: 2,maximumFractionDigits: 2}).format(value)} %`;
+      return `${new Intl.NumberFormat('de-CH',{minimumFractionDigits: 1}).format(value)} %`;
     }
 
     function updateResidualPercentage() {
