@@ -224,7 +224,7 @@
           <div class="field">
             <label for="interest">Effektiver Jahreszins</label>
             <input id="interest" type="number" min="0" max="40" step="0.01" placeholder="%" inputmode="decimal" />
-            <span class="hint">In Prozent, z. B. 9.99</span>
+            <span class="hint">In Prozent, z. B. 6.86</span>
           </div>
 
           <div class="field lease-only">
@@ -313,7 +313,7 @@
     }
 
     function pct(value) {
-      return `${new Intl.NumberFormat('de-CH', { maximumFractionDigits: 1 }).format(value)} %`;
+      return `${new Intl.NumberFormat('de-CH',{minimumFractionDigits: 2,maximumFractionDigits: 2}).format(value)} %`;
     }
 
     function updateResidualPercentage() {
